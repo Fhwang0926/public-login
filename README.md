@@ -14,6 +14,21 @@ SQLite 기반 로그인과 로그인 기록 조회를 제공하는 간단한 Nod
 git clone <저장소 URL>
 cd public-login
 npm install
+```
+
+환경 변수는 프로젝트 루트의 **`.env`** 에서 읽습니다. 샘플을 복사해 만듭니다.
+
+```bash
+# macOS / Linux
+cp .env.example .env
+
+# Windows PowerShell
+Copy-Item .env.example .env
+```
+
+이후 실행:
+
+```bash
 npm start
 ```
 
@@ -23,7 +38,7 @@ npm start
 npm run dev
 ```
 
-브라우저에서 **http://127.0.0.1:5000** 을 엽니다. 포트는 환경 변수 `PORT`로 바꿀 수 있습니다.
+브라우저에서 **http://127.0.0.1:5000** 을 엽니다. (`.env`의 `PORT` 또는 셸에서 `PORT`로 변경 가능)
 
 ## 로그인
 
@@ -43,7 +58,7 @@ npm run dev
 
 ## 운영 환경
 
-프로덕션에서는 `SECRET_KEY` 환경 변수를 반드시 설정하세요.
+프로덕션에서는 `.env`의 `SECRET_KEY`를 긴 무작위 값으로 바꾸거나, 호스트에서 환경 변수로 덮어쓰세요. (`.env`가 있으면 우선 적용됩니다.)
 
 ```bash
 set SECRET_KEY=무작위_긴_문자열   # Windows cmd
@@ -51,4 +66,4 @@ $env:SECRET_KEY="..."           # Windows PowerShell
 export SECRET_KEY=...           # macOS / Linux
 ```
 
-배포 전 개발용 기본 시크릿을 코드에서 교체하는 것도 가능하지만, 환경 변수 사용을 권장합니다.
+배포 전 개발용 기본 시크릿을 코드에서 교체하는 것도 가능하지만, `.env` 또는 환경 변수 사용을 권장합니다.
