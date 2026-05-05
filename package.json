@@ -1,0 +1,23 @@
+{
+  "name": "public-login",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SQLite login demo with login history",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-flash": "^0.1.1",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-ejs-layouts": "^2.5.1",
+    "express-session": "^1.18.1",
+    "sql.js": "^1.12.0"
+  }
+}

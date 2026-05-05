@@ -1,0 +1,37 @@
+<div class="card wide">
+  <header class="dash-header">
+    <div>
+      <h1>안녕하세요, <%= username %></h1>
+      <p class="muted">SQLite에 저장된 로그인 기록입니다.</p>
+    </div>
+    <form method="post" action="/logout">
+      <button type="submit" class="btn">로그아웃</button>
+    </form>
+  </header>
+
+  <section class="log-section">
+    <h2>로그인 기록</h2>
+    <% if (logs && logs.length) { %>
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>로그인 시각 (UTC)</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% logs.forEach(function (row, i) { %>
+            <tr>
+              <td><%= i + 1 %></td>
+              <td><code><%= row.logged_in_at %></code></td>
+              <td><%= row.ip_address ? row.ip_address : "—" %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p class="muted">아직 기록이 없습니다. 다시 로그인하면 여기에 표시됩니다.</p>
+    <% } %>
+  </section>
+</div>
