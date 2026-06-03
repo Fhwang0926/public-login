@@ -42,6 +42,25 @@ npm run dev
 
 ## 로그인
 
+### Bio-Pass (권장)
+
+Bio-Pass 관리 콘솔에서 애플리케이션을 만들고 **Callback URL**을 이 샘플과 동일하게 등록합니다.
+
+| 항목 | 예시 |
+|------|------|
+| Callback URL | `http://127.0.0.1:5000/auth/callback` (`.env`의 `PORT`·`BIO_PASS_REDIRECT_URI`와 일치) |
+| `BIO_PASS_API` | bio-pass 백엔드 API 베이스 (예: `http://127.0.0.1:3030/api`) |
+
+`.env`에 `BIO_PASS_CLIENT_ID`, `BIO_PASS_CLIENT_SECRET`, `BIO_PASS_REDIRECT_URI` 등을 설정한 뒤 실행하면 로그인 화면에 **Bio-Pass로 로그인** 버튼이 표시됩니다. 흐름은 bio-pass 개발자 문서의 OAuth 샘플과 동일합니다.
+
+1. `/auth/biopass` → Bio-Pass `/web/authorize`
+2. 인증 완료 후 `/auth/callback?code=...&state=...`
+3. 서버에서 `/web/token` · `/web/verify-token` 호출 후 세션 생성
+
+`client_secret`은 서버 환경 변수에만 두며 브라우저에 노출하지 않습니다.
+
+### 로컬 데모 계정
+
 | 항목     | 값      |
 |----------|---------|
 | 아이디   | `admin` |
@@ -51,8 +70,9 @@ npm run dev
 
 ## 기능
 
+- Bio-Pass OAuth 2.0 (authorization code) 연동
 - 세션 기반 로그인 (`express-session`)
-- 비밀번호 bcryptjs 해시 저장
+- 비밀번호 bcryptjs 해시 저장 (로컬 계정)
 - 로그인할 때마다 `login_logs` 테이블에 시각(UTC)과 IP 저장
 - 로그인 후 대시보드에서 해당 사용자의 로그인 기록 목록 표시
 

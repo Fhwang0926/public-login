@@ -8,8 +8,17 @@ const express = require("express");
 const session = require("express-session");
 const flash = require("connect-flash");
 const expressLayouts = require("express-ejs-layouts");
+const {
+  getBioPassConfig,
+  createOAuthState,
+  buildAuthorizeUrl,
+  exchangeCodeForToken,
+  verifyAccessToken,
+  displayNameFromBioPassUser,
+} = require("./lib/biopass");
 
 const BASE_DIR = __dirname;
+const bioPassConfig = getBioPassConfig();
 const DATABASE_PATH = path.join(BASE_DIR, "app.db");
 
 let db;
@@ -19,15 +28,30 @@ function persistDb() {
   fs.writeFileSync(DATABASE_PATH, Buffer.from(data));
 }
 
+function ensureUsersBioPassColumn() {
+  const info = db.exec("PRAGMA table_info(users)");
+  if (!info.length || !info[0].values) return;
+  const hasBioPassId = info[0].values.some((row) => row[1] === "bio_pass_id");
+  if (!hasBioPassId) {
+    db.run("ALTER TABLE users ADD COLUMN bio_pass_id TEXT");
+    db.run(
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_bio_pass_id ON users(bio_pass_id) WHERE bio_pass_id IS NOT NULL"
+    );
+    persistDb();
+  }
+}
+
 function initSchemaAndSeed() {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
+      bio_pass_id TEXT,
       created_at TEXT NOT NULL
     );
   `);
+  ensureUsersBioPassColumn();
   db.run(`
     CREATE TABLE IF NOT EXISTS login_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +87,44 @@ function getUserByUsername(username) {
   const row = stmt.getAsObject();
   stmt.free();
   return row;
+}
+
+function getUserByBioPassId(bioPassId) {
+  const stmt = db.prepare("SELECT id, username FROM users WHERE bio_pass_id = ?");
+  stmt.bind([bioPassId]);
+  if (!stmt.step()) {
+    stmt.free();
+    return null;
+  }
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row;
+}
+
+function upsertBioPassUser(bioPassId, username) {
+  const existing = getUserByBioPassId(bioPassId);
+  if (existing) {
+    if (existing.username !== username) {
+      db.run("UPDATE users SET username = ? WHERE id = ?", [username, existing.id]);
+      persistDb();
+    }
+    return existing.id;
+  }
+
+  const now = new Date().toISOString();
+  const placeholderHash = bcrypt.hashSync(`biopass:${bioPassId}:${now}`, 10);
+  db.run(
+    "INSERT INTO users (username, password_hash, bio_pass_id, created_at) VALUES (?, ?, ?, ?)",
+    [username, placeholderHash, bioPassId, now]
+  );
+  persistDb();
+
+  const stmt = db.prepare("SELECT id FROM users WHERE bio_pass_id = ?");
+  stmt.bind([bioPassId]);
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row.id;
 }
 
 function insertLoginLog(userId, loggedAt, ip) {
@@ -113,6 +175,7 @@ app.use(flash());
 app.use((req, res, next) => {
   res.locals.flashSuccess = req.flash("success");
   res.locals.flashError = req.flash("error");
+  res.locals.bioPassConfigured = bioPassConfig.configured;
   next();
 });
 
@@ -135,7 +198,84 @@ app.get("/login", (req, res) => {
     const cur = res.locals.flashSuccess || [];
     res.locals.flashSuccess = cur.concat(["로그아웃되었습니다."]);
   }
-  res.render("login", { title: "로그인" });
+  res.render("login", {
+    title: "로그인",
+    bioPassConfigured: bioPassConfig.configured,
+  });
+});
+
+app.get("/auth/biopass", (req, res) => {
+  if (req.session.userId) {
+    return res.redirect("/dashboard");
+  }
+  if (!bioPassConfig.configured) {
+    req.flash("error", "Bio-Pass 연동 설정이 없습니다. .env를 확인하세요.");
+    return res.redirect("/login");
+  }
+
+  const state = createOAuthState();
+  req.session.oauthState = state;
+  return res.redirect(buildAuthorizeUrl(bioPassConfig, state));
+});
+
+app.get("/auth/callback", async (req, res) => {
+  if (req.session.userId) {
+    return res.redirect("/dashboard");
+  }
+
+  const oauthError = req.query.error;
+  if (oauthError) {
+    const desc = req.query.error_description
+      ? String(req.query.error_description)
+      : String(oauthError);
+    req.flash("error", `Bio-Pass 인증이 취소되었거나 실패했습니다. (${desc})`);
+    return res.redirect("/login");
+  }
+
+  if (!bioPassConfig.configured) {
+    req.flash("error", "Bio-Pass 연동 설정이 없습니다.");
+    return res.redirect("/login");
+  }
+
+  const code = String(req.query.code || "").trim();
+  const state = String(req.query.state || "").trim();
+  const expectedState = req.session.oauthState;
+
+  if (!code) {
+    req.flash("error", "인증 코드가 없습니다.");
+    return res.redirect("/login");
+  }
+  if (!expectedState || state !== expectedState) {
+    req.flash("error", "OAuth state가 일치하지 않습니다. 다시 로그인해 주세요.");
+    return res.redirect("/login");
+  }
+
+  delete req.session.oauthState;
+
+  try {
+    const token = await exchangeCodeForToken(bioPassConfig, code);
+    const profile = await verifyAccessToken(bioPassConfig, token.access_token);
+    const bioPassId = String(profile.id || "").trim();
+    if (!bioPassId) {
+      throw new Error("Bio-Pass 사용자 ID를 확인할 수 없습니다.");
+    }
+
+    const displayName = displayNameFromBioPassUser(profile);
+    const userId = upsertBioPassUser(bioPassId, displayName);
+    const now = new Date().toISOString();
+    const ip = clientIp(req);
+    insertLoginLog(userId, now, ip);
+
+    req.session.userId = userId;
+    req.session.username = displayName;
+    req.session.authProvider = "biopass";
+    req.flash("success", "Bio-Pass로 로그인되었습니다.");
+    return res.redirect("/dashboard");
+  } catch (err) {
+    console.error("[biopass] callback error:", err.message);
+    req.flash("error", `Bio-Pass 로그인에 실패했습니다. (${err.message})`);
+    return res.redirect("/login");
+  }
 });
 
 app.post("/login", (req, res) => {
@@ -155,6 +295,7 @@ app.post("/login", (req, res) => {
 
     req.session.userId = user.id;
     req.session.username = username;
+    req.session.authProvider = "local";
     req.flash("success", "로그인되었습니다.");
     return res.redirect("/dashboard");
   }
@@ -179,6 +320,7 @@ app.get("/dashboard", (req, res) => {
   res.render("dashboard", {
     title: "대시보드",
     username: req.session.username || "",
+    authProvider: req.session.authProvider || "local",
     logs,
   });
 });
@@ -196,6 +338,11 @@ async function main() {
   const PORT = Number(process.env.PORT) || 5000;
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`http://0.0.0.0:${PORT}`);
+    if (bioPassConfig.configured) {
+      console.log(`Bio-Pass: ${bioPassConfig.apiBase} → callback ${bioPassConfig.redirectUri}`);
+    } else {
+      console.log("Bio-Pass: 미설정 (.env에 BIO_PASS_* 변수를 추가하면 연동됩니다)");
+    }
   });
 }
 

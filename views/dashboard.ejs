@@ -2,7 +2,12 @@
   <header class="dash-header">
     <div>
       <h1>안녕하세요, <%= username %></h1>
-      <p class="muted">SQLite에 저장된 로그인 기록입니다.</p>
+      <p class="muted">
+        SQLite에 저장된 로그인 기록입니다.
+        <% if (typeof authProvider !== "undefined" && authProvider === "biopass") { %>
+          <span class="badge">Bio-Pass</span>
+        <% } %>
+      </p>
     </div>
     <form method="post" action="/logout">
       <button type="submit" class="btn">로그아웃</button>
