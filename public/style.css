@@ -161,6 +161,12 @@ body {
   margin-bottom: 1rem;
 }
 
+.label-optional {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .warn-hint {
   color: #e8c47a;
   font-size: 0.82rem;

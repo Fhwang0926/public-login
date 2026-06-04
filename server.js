@@ -10,11 +10,12 @@ const flash = require("connect-flash");
 const expressLayouts = require("express-ejs-layouts");
 const {
   getBioPassConfig,
-  createOAuthState,
   buildAuthorizeUrl,
-  exchangeCodeForToken,
-  verifyAccessToken,
+  isValidEmail,
   displayNameFromBioPassUser,
+  validateOAuthState,
+  initialOAuthState,
+  authenticateWithBioPassCode,
 } = require("./lib/biopass");
 
 const BASE_DIR = __dirname;
@@ -176,6 +177,7 @@ app.use((req, res, next) => {
   res.locals.flashSuccess = req.flash("success");
   res.locals.flashError = req.flash("error");
   res.locals.bioPassConfigured = bioPassConfig.configured;
+  res.locals.bioPassSecretMisconfigured = bioPassConfig.secretLooksWrong;
   next();
 });
 
@@ -201,6 +203,7 @@ app.get("/login", (req, res) => {
   res.render("login", {
     title: "로그인",
     bioPassConfigured: bioPassConfig.configured,
+    bioPassSecretMisconfigured: bioPassConfig.secretLooksWrong,
   });
 });
 
@@ -213,9 +216,24 @@ app.get("/auth/biopass", (req, res) => {
     return res.redirect("/login");
   }
 
-  const state = createOAuthState();
+  const email = String(req.query.email || "").trim();
+  if (!email) {
+    req.flash("error", "Bio-Pass 로그인에는 이메일이 필요합니다.");
+    return res.redirect("/login");
+  }
+  if (!isValidEmail(email)) {
+    req.flash("error", "올바른 이메일 주소를 입력해 주세요.");
+    return res.redirect("/login");
+  }
+
+  const state = initialOAuthState(bioPassConfig);
   req.session.oauthState = state;
-  return res.redirect(buildAuthorizeUrl(bioPassConfig, state));
+  req.session.bioPassLoginEmail = email;
+
+  const phone = String(req.query.phone || "").trim();
+  return res.redirect(
+    buildAuthorizeUrl(bioPassConfig, state, { email, phone: phone || undefined })
+  );
 });
 
 app.get("/auth/callback", async (req, res) => {
@@ -233,28 +251,30 @@ app.get("/auth/callback", async (req, res) => {
   }
 
   if (!bioPassConfig.configured) {
-    req.flash("error", "Bio-Pass 연동 설정이 없습니다.");
+    req.flash("error", "Bio-Pass 연동 설정이 없습니다. .env를 확인하세요.");
     return res.redirect("/login");
   }
 
   const code = String(req.query.code || "").trim();
   const state = String(req.query.state || "").trim();
-  const expectedState = req.session.oauthState;
 
   if (!code) {
     req.flash("error", "인증 코드가 없습니다.");
     return res.redirect("/login");
   }
-  if (!expectedState || state !== expectedState) {
-    req.flash("error", "OAuth state가 일치하지 않습니다. 다시 로그인해 주세요.");
+
+  if (!validateOAuthState(req, state, bioPassConfig)) {
+    req.flash(
+      "error",
+      "OAuth state가 일치하지 않습니다. (세션 또는 BIO_PASS_OAUTH_STATE 확인)"
+    );
     return res.redirect("/login");
   }
 
   delete req.session.oauthState;
 
   try {
-    const token = await exchangeCodeForToken(bioPassConfig, code);
-    const profile = await verifyAccessToken(bioPassConfig, token.access_token);
+    const { profile } = await authenticateWithBioPassCode(bioPassConfig, code);
     const bioPassId = String(profile.id || "").trim();
     if (!bioPassId) {
       throw new Error("Bio-Pass 사용자 ID를 확인할 수 없습니다.");
@@ -262,9 +282,7 @@ app.get("/auth/callback", async (req, res) => {
 
     const displayName = displayNameFromBioPassUser(profile);
     const userId = upsertBioPassUser(bioPassId, displayName);
-    const now = new Date().toISOString();
-    const ip = clientIp(req);
-    insertLoginLog(userId, now, ip);
+    insertLoginLog(userId, new Date().toISOString(), clientIp(req));
 
     req.session.userId = userId;
     req.session.username = displayName;

@@ -1,9 +1,31 @@
 <div class="card">
   <h1>로그인</h1>
 
-  <p class="muted">Bio-Pass 이메일·앱 인증으로 로그인합니다.</p>
-  <a href="/auth/biopass" class="btn primary btn-block">Bio-Pass로 로그인</a>
-  <% if (typeof bioPassConfigured !== "undefined" && !bioPassConfigured) { %>
+  <p class="muted">Bio-Pass 이메일·전화(앱) 인증으로 로그인합니다. (scope: email, phone)</p>
+  <form method="get" action="/auth/biopass" class="form">
+    <label>
+      이메일
+      <input
+        type="email"
+        name="email"
+        autocomplete="email"
+        placeholder="user@example.com"
+        required
+        autofocus
+      >
+    </label>
+    <label>
+      전화번호 <span class="label-optional">(선택, 앱·SMS 인증 시)</span>
+      <input type="tel" name="phone" autocomplete="tel" placeholder="+821012345678">
+    </label>
+    <button type="submit" class="btn primary btn-block">Bio-Pass로 로그인</button>
+  </form>
+  <% if (typeof bioPassSecretMisconfigured !== "undefined" && bioPassSecretMisconfigured) { %>
+    <p class="muted muted-tight warn-hint">
+      <code>BIO_PASS_CLIENT_SECRET</code>에 Client ID가 들어가 있습니다.
+      bio-pass 앱 상세의 <strong>Client Secret</strong>(<code>secret_</code>로 시작)을 넣고 서버를 재시작하세요.
+    </p>
+  <% } else if (typeof bioPassConfigured !== "undefined" && !bioPassConfigured) { %>
     <p class="muted muted-tight warn-hint">
       연동 미완료: <code>.env</code>에 <code>BIO_PASS_CLIENT_ID</code>, <code>BIO_PASS_CLIENT_SECRET</code>을
       bio-pass 앱 값으로 설정한 뒤 서버를 재시작하세요.
