@@ -191,6 +191,75 @@ body {
   vertical-align: middle;
 }
 
+.subsection-title {
+  margin: 1.25rem 0 0.65rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.subsection-title:first-of-type {
+  margin-top: 0;
+}
+
+.field-label-ko {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.null-value {
+  color: #9aa8bc;
+  font-style: italic;
+}
+
+.kv-table thead th {
+  color: var(--muted);
+  font-weight: 500;
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-desc {
+  margin: -0.5rem 0 1rem;
+  font-size: 0.85rem;
+}
+
+.inline-note {
+  font-size: 0.8rem;
+}
+
+.kv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.kv-table-spaced {
+  margin-top: 0.75rem;
+}
+
+.kv-table th {
+  width: 11rem;
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-weight: 500;
+  vertical-align: top;
+}
+
+.kv-table td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  word-break: break-word;
+}
+
+.break-all {
+  word-break: break-all;
+}
+
 .dash-header {
   display: flex;
   flex-wrap: wrap;

@@ -56,11 +56,42 @@ Bio-Pass 인증이 성공하면 아래와 같은 **대시보드**가 표시됩�
 
 - 초록색 배너: **「Bio-Pass로 로그인되었습니다.」**
 
+### Bio-Pass API 결과 (대시보드)
+
+bio-pass 백엔드(`token.js`) 응답 형식 그대로 표시합니다.
+
+**POST /web/token 응답**
+
+| 필드 | 예시 |
+|------|------|
+| `access_token` | JWT (화면에서는 마스킹) |
+| `token_type` | `Bearer` |
+| `expires_in` | `21600` (초) |
+| `refresh_token` | JWT (마스킹) |
+| `scope` | `email phone` |
+
+**POST /web/verify-token 응답**
+
+```json
+{
+  "success": true,
+  "authenticated": true,
+  "user": {
+    "id": "usr_...",
+    "email": "user@example.com",
+    "name": "표시이름",
+    "nickname": "닉네임",
+    "phone": null,
+    "status": "ACTIVE"
+  }
+}
+```
+
+`user` 필드는 `resolveVerifiedUser()` 결과이며, 값이 없으면 `null`로 표시됩니다.
+
 ### 사용자 영역
 
-- 인사말: **「안녕하세요, `usr_xxxxxxxx...`」**  
-  - `verify-token`으로 받은 Bio-Pass 사용자 ID가 표시됩니다.  
-  - 이메일·이름 등이 응답에 있으면 해당 값을 표시 이름으로 쓰고, 없으면 `usr_` ID가 그대로 보일 수 있습니다.
+- 인사말: **「안녕하세요, `{name}`」** (없으면 nickname → email → phone → id 순)
 - 부가 설명: **「SQLite에 저장된 로그인 기록입니다.」**
 - 파란 **Bio-Pass** 뱃지: Bio-Pass로 로그인했음을 표시합니다.
 - **로그아웃** 버튼: 세션을 종료하고 로그인 화면으로 돌아갑니다.

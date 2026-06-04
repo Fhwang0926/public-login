@@ -16,6 +16,8 @@ const {
   validateOAuthState,
   initialOAuthState,
   authenticateWithBioPassCode,
+  verifyUserToDisplayRows,
+  buildAuthResultForSession,
 } = require("./lib/biopass");
 
 const BASE_DIR = __dirname;
@@ -274,7 +276,10 @@ app.get("/auth/callback", async (req, res) => {
   delete req.session.oauthState;
 
   try {
-    const { profile } = await authenticateWithBioPassCode(bioPassConfig, code);
+    const { token, verifyResult, profile } = await authenticateWithBioPassCode(
+      bioPassConfig,
+      code
+    );
     const bioPassId = String(profile.id || "").trim();
     if (!bioPassId) {
       throw new Error("Bio-Pass 사용자 ID를 확인할 수 없습니다.");
@@ -287,6 +292,12 @@ app.get("/auth/callback", async (req, res) => {
     req.session.userId = userId;
     req.session.username = displayName;
     req.session.authProvider = "biopass";
+    req.session.bioPassAuthResult = buildAuthResultForSession(
+      bioPassConfig,
+      token,
+      verifyResult,
+      { code }
+    );
     req.flash("success", "Bio-Pass로 로그인되었습니다.");
     return res.redirect("/dashboard");
   } catch (err) {
@@ -314,6 +325,7 @@ app.post("/login", (req, res) => {
     req.session.userId = user.id;
     req.session.username = username;
     req.session.authProvider = "local";
+    delete req.session.bioPassAuthResult;
     req.flash("success", "로그인되었습니다.");
     return res.redirect("/dashboard");
   }
@@ -334,11 +346,18 @@ app.get("/dashboard", (req, res) => {
   }
 
   const logs = getLoginLogsForUser(req.session.userId);
+  const bioPassAuthResult = req.session.bioPassAuthResult || null;
+  const verifyUserRows =
+    bioPassAuthResult && bioPassAuthResult.verifyResponse
+      ? verifyUserToDisplayRows(bioPassAuthResult.verifyResponse.user)
+      : null;
 
   res.render("dashboard", {
     title: "대시보드",
     username: req.session.username || "",
     authProvider: req.session.authProvider || "local",
+    bioPassAuthResult,
+    verifyUserRows,
     logs,
   });
 });

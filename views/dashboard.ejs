@@ -14,6 +14,97 @@
     </form>
   </header>
 
+  <% if (typeof bioPassAuthResult !== "undefined" && bioPassAuthResult) { %>
+    <section class="log-section">
+      <h2>POST /web/token <span class="badge">토큰 교환</span></h2>
+      <p class="muted section-desc">authorization code를 access_token · refresh_token으로 교환합니다.</p>
+
+      <h3 class="subsection-title">요청 Body</h3>
+      <table class="kv-table">
+        <tbody>
+          <tr><th>endpoint</th><td><code class="break-all"><%= bioPassAuthResult.tokenRequest.endpoint %></code></td></tr>
+          <tr><th>Content-Type</th><td><%= bioPassAuthResult.tokenRequest.contentType %></td></tr>
+          <tr><th>grant_type</th><td><code><%= bioPassAuthResult.tokenRequest.body.grant_type %></code></td></tr>
+          <tr><th>code</th><td><code class="break-all"><%= bioPassAuthResult.tokenRequest.body.code %></code> <span class="muted inline-note">(마스킹)</span></td></tr>
+          <tr><th>client_id</th><td><code class="break-all"><%= bioPassAuthResult.tokenRequest.body.client_id %></code></td></tr>
+          <tr><th>client_secret</th><td><code><%= bioPassAuthResult.tokenRequest.body.client_secret %></code> <span class="muted inline-note">(마스킹)</span></td></tr>
+          <tr><th>redirect_uri</th><td><code class="break-all"><%= bioPassAuthResult.tokenRequest.body.redirect_uri %></code></td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="subsection-title">응답 (200)</h3>
+      <table class="kv-table">
+        <tbody>
+          <tr><th>access_token</th><td><code><%= bioPassAuthResult.tokenResponse.access_token %></code> <span class="muted inline-note">(마스킹)</span></td></tr>
+          <tr><th>token_type</th><td><code><%= bioPassAuthResult.tokenResponse.token_type %></code></td></tr>
+          <tr><th>expires_in</th><td><%= bioPassAuthResult.tokenResponse.expires_in != null ? bioPassAuthResult.tokenResponse.expires_in + " (초)" : "null" %></td></tr>
+          <tr><th>refresh_token</th><td>
+            <% if (bioPassAuthResult.tokenResponse.refresh_token) { %>
+              <code><%= bioPassAuthResult.tokenResponse.refresh_token %></code> <span class="muted inline-note">(마스킹)</span>
+            <% } else { %>
+              <code class="null-value">null</code>
+            <% } %>
+          </td></tr>
+          <tr><th>scope</th><td><code><%= bioPassAuthResult.tokenResponse.scope != null ? bioPassAuthResult.tokenResponse.scope : "null" %></code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="log-section">
+      <h2>POST /web/verify-token <span class="badge">client_secret 포함</span></h2>
+      <p class="muted section-desc">access_token과 client_id · client_secret으로 사용자 정보를 조회합니다.</p>
+
+      <h3 class="subsection-title">요청 Body</h3>
+      <table class="kv-table">
+        <tbody>
+          <tr><th>endpoint</th><td><code class="break-all"><%= bioPassAuthResult.verifyRequest.endpoint %></code></td></tr>
+          <tr><th>Content-Type</th><td><%= bioPassAuthResult.verifyRequest.contentType %></td></tr>
+          <tr><th>token</th><td><code><%= bioPassAuthResult.verifyRequest.body.token %></code> <span class="muted inline-note">(access_token, 마스킹)</span></td></tr>
+          <tr><th>client_id</th><td><code class="break-all"><%= bioPassAuthResult.verifyRequest.body.client_id %></code></td></tr>
+          <tr><th>client_secret</th><td><code><%= bioPassAuthResult.verifyRequest.body.client_secret %></code> <span class="muted inline-note">(마스킹)</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="subsection-title">응답 (200)</h3>
+      <table class="kv-table">
+        <tbody>
+          <tr><th>success</th><td><code><%= bioPassAuthResult.verifyResponse.success %></code></td></tr>
+          <tr><th>authenticated</th><td><code><%= bioPassAuthResult.verifyResponse.authenticated %></code></td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="subsection-title">user <span class="muted inline-note">(resolveVerifiedUser)</span></h3>
+      <% if (verifyUserRows && verifyUserRows.length) { %>
+        <table class="kv-table kv-table-spaced">
+          <thead>
+            <tr>
+              <th>필드</th>
+              <th>값</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% verifyUserRows.forEach(function (row) { %>
+              <tr>
+                <th><code>user.<%= row.apiKey %></code><br><span class="field-label-ko"><%= row.label %></span></th>
+                <td>
+                  <% if (row.isNull) { %>
+                    <code class="null-value">null</code>
+                  <% } else if (row.isCode) { %>
+                    <code class="break-all"><%= row.displayValue %></code>
+                  <% } else { %>
+                    <%= row.displayValue %>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } else { %>
+        <p class="muted">user 객체가 비어 있습니다.</p>
+      <% } %>
+    </section>
+  <% } %>
+
   <section class="log-section">
     <h2>로그인 기록</h2>
     <% if (logs && logs.length) { %>
