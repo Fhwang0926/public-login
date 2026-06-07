@@ -21,12 +21,12 @@
     <button type="submit" class="btn primary btn-block">Bio-Pass로 로그인</button>
   </form>
   <% if (typeof bioPassSecretMisconfigured !== "undefined" && bioPassSecretMisconfigured) { %>
-    <p class="muted muted-tight warn-hint">
+    <p class="muted warn-hint">
       <code>BIO_PASS_CLIENT_SECRET</code>에 Client ID가 들어가 있습니다.
       bio-pass 앱 상세의 <strong>Client Secret</strong>(<code>secret_</code>로 시작)을 넣고 서버를 재시작하세요.
     </p>
   <% } else if (typeof bioPassConfigured !== "undefined" && !bioPassConfigured) { %>
-    <p class="muted muted-tight warn-hint">
+    <p class="muted warn-hint">
       연동 미완료: <code>.env</code>에 <code>BIO_PASS_CLIENT_ID</code>, <code>BIO_PASS_CLIENT_SECRET</code>을
       bio-pass 앱 값으로 설정한 뒤 서버를 재시작하세요.
     </p>

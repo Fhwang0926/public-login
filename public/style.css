@@ -168,6 +168,8 @@ body {
 }
 
 .warn-hint {
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
   color: #e8c47a;
   font-size: 0.82rem;
   line-height: 1.45;
