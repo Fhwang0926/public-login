@@ -5,7 +5,8 @@
   "description": "SQLite login demo with login history",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node scripts/start.js",
+    "start:direct": "node server.js",
     "dev": "node --watch server.js"
   },
   "engines": {

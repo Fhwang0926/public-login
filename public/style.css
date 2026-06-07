@@ -228,6 +228,32 @@ body {
   font-size: 0.85rem;
 }
 
+.env-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.update-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.update-form {
+  margin-top: 1rem;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  filter: none;
+  background: var(--accent);
+}
+
 .inline-note {
   font-size: 0.8rem;
 }

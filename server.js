@@ -19,6 +19,15 @@ const {
   verifyUserToDisplayRows,
   buildAuthResultForSession,
 } = require("./lib/biopass");
+const { getAppEnvDisplayRows } = require("./lib/envDisplay");
+const {
+  getUpdateStatus,
+  performSelfUpdate,
+  scheduleProcessRestart,
+  verifyUpdateSecret,
+  canManageUpdate,
+  isUpdateEnabled,
+} = require("./lib/selfUpdate");
 
 const BASE_DIR = __dirname;
 const bioPassConfig = getBioPassConfig();
@@ -202,10 +211,15 @@ app.get("/login", (req, res) => {
     const cur = res.locals.flashSuccess || [];
     res.locals.flashSuccess = cur.concat(["로그아웃되었습니다."]);
   }
+  if (req.query.updated === "1") {
+    const cur = res.locals.flashSuccess || [];
+    res.locals.flashSuccess = cur.concat(["업데이트가 완료되어 서버가 재시작되었습니다."]);
+  }
   res.render("login", {
     title: "로그인",
     bioPassConfigured: bioPassConfig.configured,
     bioPassSecretMisconfigured: bioPassConfig.secretLooksWrong,
+    envRows: getAppEnvDisplayRows(),
   });
 });
 
@@ -340,7 +354,7 @@ app.post("/logout", (req, res) => {
   });
 });
 
-app.get("/dashboard", (req, res) => {
+app.get("/dashboard", async (req, res) => {
   if (!req.session.userId) {
     return res.redirect("/login");
   }
@@ -352,6 +366,21 @@ app.get("/dashboard", (req, res) => {
       ? verifyUserToDisplayRows(bioPassAuthResult.verifyResponse.user)
       : null;
 
+  const showUpdatePanel = canManageUpdate(req);
+  let updateStatus = null;
+  if (showUpdatePanel) {
+    try {
+      updateStatus = await getUpdateStatus(BASE_DIR);
+    } catch (err) {
+      updateStatus = {
+        enabled: isUpdateEnabled(),
+        isRepo: false,
+        canUpdate: false,
+        message: err.message,
+      };
+    }
+  }
+
   res.render("dashboard", {
     title: "대시보드",
     username: req.session.username || "",
@@ -359,7 +388,46 @@ app.get("/dashboard", (req, res) => {
     bioPassAuthResult,
     verifyUserRows,
     logs,
+    showUpdatePanel,
+    updateStatus,
+    updateSecretRequired: Boolean(String(process.env.UPDATE_SECRET || "").trim()),
   });
+});
+
+app.post("/admin/update", async (req, res) => {
+  if (!canManageUpdate(req)) {
+    req.flash("error", "업데이트 권한이 없습니다. 로컬 admin 계정으로 로그인하세요.");
+    return res.redirect("/dashboard");
+  }
+  if (!verifyUpdateSecret(req.body.updateSecret)) {
+    req.flash("error", "UPDATE_SECRET 이 일치하지 않습니다.");
+    return res.redirect("/dashboard");
+  }
+
+  try {
+    const result = await performSelfUpdate(BASE_DIR);
+    if (!result.pulled) {
+      req.flash("success", result.message);
+      return res.redirect("/dashboard");
+    }
+
+    console.log(
+      `[update] ${result.beforeCommit} → ${result.afterCommit}`,
+      result.pullOutput
+    );
+    if (result.npmInstall.ran) {
+      console.log("[update] npm install 완료");
+    }
+
+    req.session.destroy(() => {
+      res.on("finish", () => scheduleProcessRestart(BASE_DIR));
+      res.redirect("/login?updated=1");
+    });
+  } catch (err) {
+    console.error("[update] error:", err.message);
+    req.flash("error", err.message);
+    return res.redirect("/dashboard");
+  }
 });
 
 async function main() {

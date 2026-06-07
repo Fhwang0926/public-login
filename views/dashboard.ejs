@@ -105,6 +105,81 @@
     </section>
   <% } %>
 
+  <% if (typeof showUpdatePanel !== "undefined" && showUpdatePanel && updateStatus) { %>
+    <section class="log-section update-section">
+      <h2>자동 업데이트 <span class="badge">git pull</span></h2>
+      <p class="muted section-desc">
+        원격 저장소에서 최신 코드를 받은 뒤 서버 프로세스를 종료하고 다시 시작합니다.
+        <% if (updateStatus.restartWrapper) { %>
+          <span class="inline-note">(재시작 래퍼 활성 — <code>npm start</code>)</span>
+        <% } else { %>
+          <span class="warn-hint inline-note">재시작 래퍼 없음 — <code>npm start</code> 사용을 권장합니다.</span>
+        <% } %>
+      </p>
+
+      <table class="kv-table kv-table-spaced">
+        <tbody>
+          <tr>
+            <th>상태</th>
+            <td><%= updateStatus.enabled ? "활성" : "비활성" %></td>
+          </tr>
+          <% if (updateStatus.isRepo) { %>
+            <tr>
+              <th>브랜치</th>
+              <td><code><%= updateStatus.branch || "—" %></code></td>
+            </tr>
+            <tr>
+              <th>현재 커밋</th>
+              <td>
+                <code><%= updateStatus.commit || "—" %></code>
+                <% if (updateStatus.commitSubject) { %>
+                  <span class="muted inline-note"><%= updateStatus.commitSubject %></span>
+                <% } %>
+              </td>
+            </tr>
+            <tr>
+              <th>원격 대비</th>
+              <td>
+                <% if (updateStatus.hasUpstream) { %>
+                  behind <code><%= updateStatus.behind %></code>,
+                  ahead <code><%= updateStatus.ahead %></code>
+                <% } else { %>
+                  upstream 미설정
+                <% } %>
+              </td>
+            </tr>
+            <tr>
+              <th>작업 트리</th>
+              <td><%= updateStatus.dirty ? "로컬 변경 있음" : "깨끗함" %></td>
+            </tr>
+          <% } %>
+          <% if (updateStatus.message) { %>
+            <tr>
+              <th>안내</th>
+              <td><%= updateStatus.message %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+
+      <form method="post" action="/admin/update" class="form update-form">
+        <% if (typeof updateSecretRequired !== "undefined" && updateSecretRequired) { %>
+          <label>
+            UPDATE_SECRET
+            <input type="password" name="updateSecret" autocomplete="off" required>
+          </label>
+        <% } %>
+        <button
+          type="submit"
+          class="btn primary"
+          <%= updateStatus.canUpdate ? "" : "disabled" %>
+        >
+          git pull 후 재시작
+        </button>
+      </form>
+    </section>
+  <% } %>
+
   <section class="log-section">
     <h2>로그인 기록</h2>
     <% if (logs && logs.length) { %>

@@ -46,4 +46,32 @@
     </label>
     <button type="submit" class="btn">로컬 계정으로 로그인</button>
   </form>
+
+  <% if (typeof envRows !== "undefined" && envRows.length) { %>
+    <section class="env-section">
+      <h2 class="subsection-title">현재 환경 변수</h2>
+      <p class="muted section-desc">서버가 읽은 <code>.env</code> 값입니다. 변경 후에는 서버를 재시작하세요.</p>
+      <table class="kv-table kv-table-spaced">
+        <thead>
+          <tr>
+            <th>변수</th>
+            <th>값</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% envRows.forEach(function (row) { %>
+            <tr>
+              <th><code><%= row.key %></code></th>
+              <td>
+                <code class="break-all"><%= row.value %></code>
+                <% if (row.note) { %>
+                  <span class="muted inline-note">(<%= row.note %>)</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </section>
+  <% } %>
 </div>
