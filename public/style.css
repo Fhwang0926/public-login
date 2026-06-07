@@ -235,13 +235,18 @@ body {
 }
 
 .update-section {
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--border);
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.update-meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
 }
 
 .update-form {
-  margin-top: 1rem;
+  margin-top: 0.5rem;
 }
 
 .btn:disabled {

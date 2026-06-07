@@ -47,6 +47,49 @@
     <button type="submit" class="btn">로컬 계정으로 로그인</button>
   </form>
 
+  <% if (typeof updateStatus !== "undefined" && updateStatus) { %>
+    <section class="update-section">
+      <h2 class="subsection-title">자동 업데이트</h2>
+      <p class="muted section-desc">
+        원격 저장소에서 <code>git pull</code> 후 서버를 재시작합니다.
+        <% if (updateStatus.restartWrapper) { %>
+          <span class="inline-note">(<code>npm start</code> 재시작 래퍼 활성)</span>
+        <% } else { %>
+          <span class="warn-hint inline-note"><code>npm start</code> 사용을 권장합니다.</span>
+        <% } %>
+      </p>
+
+      <% if (updateStatus.isRepo) { %>
+        <p class="muted update-meta">
+          <code><%= updateStatus.branch || "—" %></code>
+          @ <code><%= updateStatus.commit || "—" %></code>
+          <% if (updateStatus.hasUpstream) { %>
+            · behind <code><%= updateStatus.behind %></code>
+          <% } %>
+        </p>
+      <% } %>
+      <% if (updateStatus.message) { %>
+        <p class="muted update-meta"><%= updateStatus.message %></p>
+      <% } %>
+
+      <form method="post" action="/update" class="form update-form">
+        <% if (typeof updateSecretRequired !== "undefined" && updateSecretRequired) { %>
+          <label>
+            UPDATE_SECRET
+            <input type="password" name="updateSecret" autocomplete="off" required>
+          </label>
+        <% } %>
+        <button
+          type="submit"
+          class="btn primary btn-block"
+          <%= updateStatus.canPull ? "" : "disabled" %>
+        >
+          최신으로 업데이트
+        </button>
+      </form>
+    </section>
+  <% } %>
+
   <% if (typeof envRows !== "undefined" && envRows.length) { %>
     <section class="env-section">
       <h2 class="subsection-title">현재 환경 변수</h2>
