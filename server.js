@@ -10,6 +10,8 @@ const flash = require("connect-flash");
 const expressLayouts = require("express-ejs-layouts");
 const {
   getBioPassConfig,
+  getBioPassConfigFromRequest,
+  parseBioPassOverridesFromBody,
   buildAuthorizeUrl,
   isValidEmail,
   displayNameFromBioPassUser,
@@ -19,7 +21,10 @@ const {
   verifyUserToDisplayRows,
   buildAuthResultForSession,
 } = require("./lib/biopass");
-const { getAppEnvDisplayRows } = require("./lib/envDisplay");
+const {
+  getAppEnvDisplayRows,
+  getBioPassOverrideFormFields,
+} = require("./lib/envDisplay");
 const {
   getUpdateStatus,
   performSelfUpdate,
@@ -184,10 +189,11 @@ app.use(
 app.use(flash());
 
 app.use((req, res, next) => {
+  const cfg = getBioPassConfigFromRequest(req);
   res.locals.flashSuccess = req.flash("success");
   res.locals.flashError = req.flash("error");
-  res.locals.bioPassConfigured = bioPassConfig.configured;
-  res.locals.bioPassSecretMisconfigured = bioPassConfig.secretLooksWrong;
+  res.locals.bioPassConfigured = cfg.configured;
+  res.locals.bioPassSecretMisconfigured = cfg.secretLooksWrong;
   next();
 });
 
@@ -230,22 +236,49 @@ app.get("/login", async (req, res) => {
     }
   }
 
+  const overrides = req.session.bioPassOverrides || {};
+  const cfg = getBioPassConfig(overrides);
+
   res.render("login", {
     title: "로그인",
-    bioPassConfigured: bioPassConfig.configured,
-    bioPassSecretMisconfigured: bioPassConfig.secretLooksWrong,
-    envRows: getAppEnvDisplayRows(),
+    bioPassConfigured: cfg.configured,
+    bioPassSecretMisconfigured: cfg.secretLooksWrong,
+    bioPassOverrideFields: getBioPassOverrideFormFields(overrides),
+    bioPassHasOverrides: Boolean(cfg.overriddenKeys && cfg.overriddenKeys.length),
+    envRows: getAppEnvDisplayRows(overrides),
     updateStatus,
     updateSecretRequired: Boolean(String(process.env.UPDATE_SECRET || "").trim()),
   });
+});
+
+app.post("/settings/biopass", (req, res) => {
+  const overrides = parseBioPassOverridesFromBody(req.body);
+  if (Object.keys(overrides).length === 0) {
+    delete req.session.bioPassOverrides;
+    req.flash("success", "오버라이드를 비웠습니다. .env 기본값을 사용합니다.");
+  } else {
+    req.session.bioPassOverrides = overrides;
+    req.flash(
+      "success",
+      `Bio-Pass 설정을 세션에 저장했습니다. (${Object.keys(overrides).length}개 항목)`
+    );
+  }
+  return res.redirect("/login");
+});
+
+app.post("/settings/biopass/reset", (req, res) => {
+  delete req.session.bioPassOverrides;
+  req.flash("success", "Bio-Pass 오버라이드를 초기화했습니다. (.env 기본값)");
+  return res.redirect("/login");
 });
 
 app.get("/auth/biopass", (req, res) => {
   if (req.session.userId) {
     return res.redirect("/dashboard");
   }
-  if (!bioPassConfig.configured) {
-    req.flash("error", "Bio-Pass 연동 설정이 없습니다. .env를 확인하세요.");
+  const cfg = getBioPassConfigFromRequest(req);
+  if (!cfg.configured) {
+    req.flash("error", "Bio-Pass 연동 설정이 없습니다. .env 또는 오버라이드 폼을 확인하세요.");
     return res.redirect("/login");
   }
 
@@ -259,13 +292,13 @@ app.get("/auth/biopass", (req, res) => {
     return res.redirect("/login");
   }
 
-  const state = initialOAuthState(bioPassConfig);
+  const state = initialOAuthState(cfg);
   req.session.oauthState = state;
   req.session.bioPassLoginEmail = email;
 
   const phone = String(req.query.phone || "").trim();
   return res.redirect(
-    buildAuthorizeUrl(bioPassConfig, state, { email, phone: phone || undefined })
+    buildAuthorizeUrl(cfg, state, { email, phone: phone || undefined })
   );
 });
 
@@ -283,8 +316,9 @@ app.get("/auth/callback", async (req, res) => {
     return res.redirect("/login");
   }
 
-  if (!bioPassConfig.configured) {
-    req.flash("error", "Bio-Pass 연동 설정이 없습니다. .env를 확인하세요.");
+  const cfg = getBioPassConfigFromRequest(req);
+  if (!cfg.configured) {
+    req.flash("error", "Bio-Pass 연동 설정이 없습니다. .env 또는 오버라이드 폼을 확인하세요.");
     return res.redirect("/login");
   }
 
@@ -296,7 +330,7 @@ app.get("/auth/callback", async (req, res) => {
     return res.redirect("/login");
   }
 
-  if (!validateOAuthState(req, state, bioPassConfig)) {
+  if (!validateOAuthState(req, state, cfg)) {
     req.flash(
       "error",
       "OAuth state가 일치하지 않습니다. (세션 또는 BIO_PASS_OAUTH_STATE 확인)"
@@ -308,7 +342,7 @@ app.get("/auth/callback", async (req, res) => {
 
   try {
     const { token, verifyResult, profile } = await authenticateWithBioPassCode(
-      bioPassConfig,
+      cfg,
       code
     );
     const bioPassId = String(profile.id || "").trim();
@@ -324,7 +358,7 @@ app.get("/auth/callback", async (req, res) => {
     req.session.username = displayName;
     req.session.authProvider = "biopass";
     req.session.bioPassAuthResult = buildAuthResultForSession(
-      bioPassConfig,
+      cfg,
       token,
       verifyResult,
       { code }

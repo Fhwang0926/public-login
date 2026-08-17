@@ -234,6 +234,17 @@ body {
   border-top: 1px solid var(--border);
 }
 
+.override-form .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.override-form label code {
+  margin-right: 0.35rem;
+}
+
 .update-section {
   margin-top: 2rem;
   padding-top: 1.5rem;

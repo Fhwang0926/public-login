@@ -23,12 +23,13 @@
   <% if (typeof bioPassSecretMisconfigured !== "undefined" && bioPassSecretMisconfigured) { %>
     <p class="muted warn-hint">
       <code>BIO_PASS_CLIENT_SECRET</code>에 Client ID가 들어가 있습니다.
-      bio-pass 앱 상세의 <strong>Client Secret</strong>(<code>secret_</code>로 시작)을 넣고 서버를 재시작하세요.
+      bio-pass 앱 상세의 <strong>Client Secret</strong>(<code>secret_</code>로 시작)을
+      아래 오버라이드 폼 또는 <code>.env</code>에 넣으세요.
     </p>
   <% } else if (typeof bioPassConfigured !== "undefined" && !bioPassConfigured) { %>
     <p class="muted warn-hint">
-      연동 미완료: <code>.env</code>에 <code>BIO_PASS_CLIENT_ID</code>, <code>BIO_PASS_CLIENT_SECRET</code>을
-      bio-pass 앱 값으로 설정한 뒤 서버를 재시작하세요.
+      연동 미완료: 아래 오버라이드 폼 또는 <code>.env</code>에
+      <code>BIO_PASS_CLIENT_ID</code>, <code>BIO_PASS_CLIENT_SECRET</code>을 설정하세요.
     </p>
   <% } %>
 
@@ -90,10 +91,49 @@
     </section>
   <% } %>
 
+  <% if (typeof bioPassOverrideFields !== "undefined" && bioPassOverrideFields.length) { %>
+    <section class="env-section">
+      <h2 class="subsection-title">Bio-Pass 설정 오버라이드</h2>
+      <p class="muted section-desc">
+        아래 값을 바꾸면 이 브라우저 세션에서만 <code>.env</code>보다 우선 적용됩니다.
+        서버 재시작 없이 바로 로그인에 반영됩니다.
+        <% if (typeof bioPassHasOverrides !== "undefined" && bioPassHasOverrides) { %>
+          <span class="warn-hint inline-note">현재 세션 오버라이드 적용 중</span>
+        <% } %>
+      </p>
+      <form method="post" action="/settings/biopass" class="form override-form">
+        <% bioPassOverrideFields.forEach(function (field) { %>
+          <label>
+            <code><%= field.label %></code>
+            <% if (field.overridden) { %>
+              <span class="badge">오버라이드</span>
+            <% } %>
+            <input
+              type="<%= field.key === 'clientSecret' ? 'password' : 'text' %>"
+              name="<%= field.key %>"
+              value="<%= field.value %>"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="<%= field.envDefault || '(미설정)' %>"
+            >
+          </label>
+        <% }) %>
+        <div class="form-actions">
+          <button type="submit" class="btn primary">적용</button>
+          <button type="submit" class="btn" formaction="/settings/biopass/reset" formmethod="post">
+            .env로 초기화
+          </button>
+        </div>
+      </form>
+    </section>
+  <% } %>
+
   <% if (typeof envRows !== "undefined" && envRows.length) { %>
     <section class="env-section">
       <h2 class="subsection-title">현재 환경 변수</h2>
-      <p class="muted section-desc">서버가 읽은 <code>.env</code> 값입니다. 변경 후에는 서버를 재시작하세요.</p>
+      <p class="muted section-desc">
+        서버가 실제로 사용하는 값입니다. Bio-Pass 항목은 세션 오버라이드가 있으면 반영됩니다.
+      </p>
       <table class="kv-table kv-table-spaced">
         <thead>
           <tr>
