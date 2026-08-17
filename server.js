@@ -35,7 +35,13 @@ const {
 
 const BASE_DIR = __dirname;
 const bioPassConfig = getBioPassConfig();
-const DATABASE_PATH = path.join(BASE_DIR, "app.db");
+const sessionSecret = process.env.SECRET_KEY || "";
+if (process.env.NODE_ENV === "production" && !sessionSecret) {
+  throw new Error("SECRET_KEY is required when NODE_ENV=production");
+}
+const DATABASE_PATH = process.env.DATABASE_PATH
+  ? path.resolve(process.env.DATABASE_PATH)
+  : path.join(BASE_DIR, "app.db");
 
 let db;
 
@@ -180,7 +186,7 @@ app.use(express.static(path.join(BASE_DIR, "public")));
 
 app.use(
   session({
-    secret: process.env.SECRET_KEY || "dev-change-me-in-production",
+    secret: sessionSecret || "dev-change-me-in-production",
     resave: false,
     saveUninitialized: false,
     cookie: { httpOnly: true, sameSite: "lax" },

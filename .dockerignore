@@ -1,0 +1,6 @@
+.git
+.env
+.npm-cache
+node_modules
+app.db
+*.log
