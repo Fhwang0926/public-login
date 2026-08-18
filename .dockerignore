@@ -3,4 +3,5 @@
 .npm-cache
 node_modules
 app.db
+biopass-overrides.json
 *.log

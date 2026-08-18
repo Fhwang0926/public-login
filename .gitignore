@@ -1,6 +1,7 @@
 node_modules/
 .env
 *.db
+biopass-overrides.json
 
 # legacy / optional local venv
 .venv/

@@ -95,10 +95,10 @@
     <section class="env-section">
       <h2 class="subsection-title">Bio-Pass 설정 오버라이드</h2>
       <p class="muted section-desc">
-        아래 값을 바꾸면 이 브라우저 세션에서만 <code>.env</code>보다 우선 적용됩니다.
-        서버 재시작 없이 바로 로그인에 반영됩니다.
+        아래 값을 바꾸면 <code>.env</code>보다 우선 적용됩니다.
+        서버 재시작이나 업데이트 후에도 유지됩니다.
         <% if (typeof bioPassHasOverrides !== "undefined" && bioPassHasOverrides) { %>
-          <span class="warn-hint inline-note">현재 세션 오버라이드 적용 중</span>
+          <span class="warn-hint inline-note">현재 런타임 오버라이드 적용 중</span>
         <% } %>
       </p>
       <form method="post" action="/settings/biopass" class="form override-form">
@@ -132,7 +132,7 @@
     <section class="env-section">
       <h2 class="subsection-title">현재 환경 변수</h2>
       <p class="muted section-desc">
-        서버가 실제로 사용하는 값입니다. Bio-Pass 항목은 세션 오버라이드가 있으면 반영됩니다.
+        서버가 실제로 사용하는 값입니다. Bio-Pass 항목은 오버라이드가 있으면 반영됩니다.
       </p>
       <table class="kv-table kv-table-spaced">
         <thead>

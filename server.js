@@ -12,6 +12,10 @@ const {
   getBioPassConfig,
   getBioPassConfigFromRequest,
   parseBioPassOverridesFromBody,
+  initBioPassOverrideStore,
+  getStoredBioPassOverrides,
+  setStoredBioPassOverrides,
+  clearStoredBioPassOverrides,
   buildAuthorizeUrl,
   isValidEmail,
   displayNameFromBioPassUser,
@@ -42,6 +46,9 @@ if (process.env.NODE_ENV === "production" && !sessionSecret) {
 const DATABASE_PATH = process.env.DATABASE_PATH
   ? path.resolve(process.env.DATABASE_PATH)
   : path.join(BASE_DIR, "app.db");
+initBioPassOverrideStore(
+  path.join(path.dirname(DATABASE_PATH), "biopass-overrides.json")
+);
 
 let db;
 
@@ -259,7 +266,7 @@ app.get("/login", async (req, res) => {
     }
   }
 
-  const overrides = req.session.bioPassOverrides || {};
+  const overrides = getStoredBioPassOverrides();
   const cfg = getBioPassConfig(overrides);
 
   res.render("login", {
@@ -277,20 +284,20 @@ app.get("/login", async (req, res) => {
 app.post("/settings/biopass", (req, res) => {
   const overrides = parseBioPassOverridesFromBody(req.body);
   if (Object.keys(overrides).length === 0) {
-    delete req.session.bioPassOverrides;
+    clearStoredBioPassOverrides();
     req.flash("success", "오버라이드를 비웠습니다. .env 기본값을 사용합니다.");
   } else {
-    req.session.bioPassOverrides = overrides;
+    setStoredBioPassOverrides(overrides);
     req.flash(
       "success",
-      `Bio-Pass 설정을 세션에 저장했습니다. (${Object.keys(overrides).length}개 항목)`
+      `Bio-Pass 설정을 저장했습니다. 업데이트·재시작 후에도 유지됩니다. (${Object.keys(overrides).length}개 항목)`
     );
   }
   return res.redirect("/login");
 });
 
 app.post("/settings/biopass/reset", (req, res) => {
-  delete req.session.bioPassOverrides;
+  clearStoredBioPassOverrides();
   req.flash("success", "Bio-Pass 오버라이드를 초기화했습니다. (.env 기본값)");
   return res.redirect("/login");
 });
