@@ -100,7 +100,9 @@ function initSchemaAndSeed() {
 }
 
 function getUserByUsername(username) {
-  const stmt = db.prepare("SELECT id, password_hash FROM users WHERE username = ?");
+  const stmt = db.prepare(
+    "SELECT id, username, password_hash, bio_pass_id FROM users WHERE username = ?"
+  );
   stmt.bind([username]);
   if (!stmt.step()) {
     stmt.free();
@@ -124,13 +126,28 @@ function getUserByBioPassId(bioPassId) {
 }
 
 function upsertBioPassUser(bioPassId, username) {
-  const existing = getUserByBioPassId(bioPassId);
-  if (existing) {
-    if (existing.username !== username) {
-      db.run("UPDATE users SET username = ? WHERE id = ?", [username, existing.id]);
+  const existingById = getUserByBioPassId(bioPassId);
+  if (existingById) {
+    if (existingById.username !== username) {
+      const taken = getUserByUsername(username);
+      if (!taken || taken.id === existingById.id) {
+        db.run("UPDATE users SET username = ? WHERE id = ?", [username, existingById.id]);
+        persistDb();
+      }
+    }
+    return existingById.id;
+  }
+
+  const existingByName = getUserByUsername(username);
+  if (existingByName) {
+    if (existingByName.bio_pass_id !== bioPassId) {
+      db.run("UPDATE users SET bio_pass_id = ? WHERE id = ?", [
+        bioPassId,
+        existingByName.id,
+      ]);
       persistDb();
     }
-    return existing.id;
+    return existingByName.id;
   }
 
   const now = new Date().toISOString();
